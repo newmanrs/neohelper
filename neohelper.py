@@ -14,7 +14,10 @@ import click
     show_default = True)
 @click.pass_context
 def cli(ctx,uri,db_pw_env_var):
-    """ Interface for monitoring and interacting with Neo4j databases """
+    """
+    Interface for monitoring and interacting with Neo4j databases.
+    Invoke `neohelper command --help` for details on each command.
+    """
 
     try:
         pw = os.environ[db_pw_env_var]
@@ -65,6 +68,7 @@ def count_labels(ctx, *args, **kwargs):
     labels = kwargs['labels']
     results = record['label_counts']
 
+    #Filter from the results for all labels for ones given.
     if labels is not None:
         labels = labels.split()
         lcl = []
@@ -96,12 +100,33 @@ def count_labels(ctx, *args, **kwargs):
     default = 'read',
     show_default = True)
 @click.option('--json','-j',
-    multiple=True)
+    multiple=True,
+    help = "Add json string to the query as a list variable $params.  Use multiple -j flags, one per each to fill list.  Be sure in your query to escape \"UNWIND \$params\"")
 @click.option('--verbose', '-v',
     default = False,
     is_flag = True)
 def query(ctx, *args, **kwargs):
-    """ Perform given cypher query """
+    """ 
+    Perform given cypher query, with optional parameters
+
+    Example:
+
+    \b
+    neohelper query \\
+    "with \$params as jsons
+    unwind  jsons as json
+    MERGE (p:Person {
+        name : json.name,
+        age : json.age
+        })
+    return count(p) as nodes_merged" \\
+    -j '{"name" : "John Jackson", "age" : "45" }' \\
+    -j '{"name" : "Jack Johnson", "age" : "53" }' \\
+    --mode 'write' \\
+    --verbose
+
+
+    """
 
     query = kwargs['query']
     mode = kwargs['mode']
