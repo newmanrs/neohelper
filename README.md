@@ -13,7 +13,8 @@ You can get the list of current commands by just invoking the script `neohelper`
 ```
 Usage: neohelper [OPTIONS] COMMAND [ARGS]...
 
-  Interface for monitoring and interacting with Neo4j databases
+  Interface for monitoring and interacting with Neo4j databases. Invoke
+  `neohelper command --help` for details on each command.
 
 Options:
   --uri TEXT            Database uri  [default: neo4j://localhost:7687]
@@ -22,9 +23,10 @@ Options:
   --help                Show this message and exit.
 
 Commands:
-  count          Display count nodes in database
+  count          Display count of nodes and edges database
   count-labels   Count of each node label
   detach-delete  Delete all nodes and relationships in the database
+  query          Perform given cypher query, with optional parameters
 ```
 
 Each subcommand to the script has its own manual page such as `neohelper count-labels --help` describing additional options or flags if any.
@@ -33,10 +35,10 @@ At the time of writing this readme, a useful command to run during loading neo4j
 
 # Examples
 
-## Json styled inputs
+## Json inputs
 
 ```
-helper query \
+neohelper query \
 "with \$params as jsons
 unwind  jsons as json
 MERGE (p:Person {
