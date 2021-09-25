@@ -1,5 +1,6 @@
 from neo4j import GraphDatabase
 import os
+import json
 import click
 
 @click.group()
@@ -55,7 +56,7 @@ def _count(tx):
 
 @cli.command()
 @click.pass_context
-@click.option('--labels', type=str,
+@click.option('--labels', '-l', type=str,
     help="Specify list of node labels to count as quoted string 'Label1 Label2'.  Returns -1 if no node by that label exists")
 def count_labels(ctx, *args, **kwargs):
     """ Count of each node label """
@@ -98,6 +99,55 @@ def _count_labels(tx, *args, **kwargs):
             click.echo(f"{l} : {c}")
 
     return results
+
+@cli.command()
+@click.pass_context
+@click.argument('query',type=str)
+@click.option('--mode',
+    type=click.Choice(['read', 'write'],
+    case_sensitive=False),
+    default = 'read',
+    show_default = True)
+@click.option('--json','-j',
+    multiple=True)
+def query(ctx, *args, **kwargs):
+    """ Perform given cypher query """
+    l = []
+    for param in kwargs['json']:
+        l.append(json.loads(param))
+    query = kwargs['query']
+    mode = kwargs['mode']
+
+    results = _query(ctx, query, l, mode)
+    for row in results:
+        click.echo(row)
+
+def _query(ctx, query, params, mode):
+    with ctx.obj['driver'].session() as session:
+        if mode == 'read':
+            txfn = session.read_transaction
+        else:
+            txfn = session.write_transaction
+    return txfn(_tx_func, query, params)
+
+def _tx_func(tx, query, params):
+    if params:
+        print(query)
+        print(params)
+        results = tx.run(query,params=params)
+    else:
+        results = tx.run(query)
+    l = []
+    for r in results:
+        click.echo(r)
+        keys = r.keys()
+        values = r.values()
+        d = dict()
+        for k,v in zip(keys,values):
+            d[k]=v
+        l.append(d)
+
+    return l
 
 @cli.command()
 @click.pass_context
