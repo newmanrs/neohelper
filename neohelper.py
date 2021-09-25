@@ -22,8 +22,10 @@ def cli(ctx,uri,db_pw_env_var):
     try:
         pw = os.environ[db_pw_env_var]
     except KeyError as e:
-        msg = "No environment variable `NEO4J_PW` found.  Consider running export NEO4J_PW='yourpassword' in the current shell environment or in your shell config file."
-        raise KeyError(msg)
+        msg = "No environment variable `NEO4J_PW` found. " \
+            "Export NEO4J_PW='yourpassword' " \
+            "in the current shell environment or in your shell config file."
+        raise KeyError(msg) from e
 
     driver = GraphDatabase.driver(uri, auth=("neo4j", pw))
     ctx.obj = {'driver' : driver}  # Store in click pass_context
@@ -50,8 +52,11 @@ def count(ctx):
 
 @cli.command()
 @click.pass_context
-@click.option('--labels', '-l', type=str,
-    help="Specify list of node labels to count as quoted string 'Label1 Label2'.  Returns -1 if no node by that label exists")
+@click.option('--labels', '-l',
+    type=str,
+    multiple = True,
+    help="Specify node labels to be counted. Option can be used multiple times " \
+    " to specify multiple labels.  Returns -1 if no node by that label exists")
 def count_labels(ctx, *args, **kwargs):
     """ Count of each node label """
 
@@ -66,8 +71,7 @@ def count_labels(ctx, *args, **kwargs):
     results = record['label_counts']
 
     #Filter from the results for all labels for ones given.
-    if labels is not None:
-        labels = labels.split()
+    if labels:
         lcl = []
         for label in labels:
             lc = {'label' : label, 'count' : -1}
@@ -121,8 +125,6 @@ def query(ctx, *args, **kwargs):
     -j '{"name" : "Jack Johnson", "age" : "53" }' \\
     --mode 'write' \\
     --verbose
-
-
     """
 
     query = kwargs['query']
