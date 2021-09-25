@@ -29,9 +29,7 @@ Commands:
   query          Perform given cypher query, with optional parameters
 ```
 
-Each subcommand to the script has its own manual page such as `neohelper count-labels --help` describing additional options or flags if any.
-
-At the time of writing this readme, a useful command to run during loading neo4j databases is `watch -n 1 neohelper count-labels`, which shows the current count of nodes of each label type in the database and updates your terminal window every 1s.  And of course `neohelper detach-delete` for a quick wipe.
+Each subcommand to the script has its own manual page such as `neohelper query --help`.
 
 # Examples
 
@@ -70,3 +68,10 @@ Parsing json parameters:
 
 Results:
 {'nodes_merged': 2}
+```
+
+## Crude database load monitoring
+
+Use watch command to loop running node counts
+
+`watch -n 1 neohelper count-labels`
