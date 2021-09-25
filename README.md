@@ -27,6 +27,44 @@ Commands:
   detach-delete  Delete all nodes and relationships in the database
 ```
 
-Each subcommand to the script has its own manual page such as `neohelper count-labels --help` describing additional options or flags if any.  
+Each subcommand to the script has its own manual page such as `neohelper count-labels --help` describing additional options or flags if any.
 
 At the time of writing this readme, a useful command to run during loading neo4j databases is `watch -n 1 neohelper count-labels`, which shows the current count of nodes of each label type in the database and updates your terminal window every 1s.  And of course `neohelper detach-delete` for a quick wipe.
+
+# Examples
+
+## Json styled inputs
+
+```
+helper query \
+"with \$params as jsons
+unwind  jsons as json
+MERGE (p:Person {
+        name : json.name,
+            age : json.age
+                })
+return count(p) as nodes_merged" \
+-j '{"name" : "John Jackson", "age" : "45" }' \
+-j '{"name" : "Jack Johnson", "age" : "53" }' \
+--mode 'write' \
+--verbose
+```
+
+should give outputs as:
+
+```
+Input query is:
+with $params as jsons
+unwind  jsons as json
+MERGE (p:Person {
+    name : json.name,
+    age : json.age
+    })
+return count(p) as nodes_merged
+
+Parsing json parameters:
+{"name" : "John Jackson", "age" : "45" }
+{"name" : "Jack Johnson", "age" : "53" }
+
+Results:
+{'nodes_merged': 2}

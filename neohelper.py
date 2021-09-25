@@ -111,16 +111,20 @@ def query(ctx, *args, **kwargs):
     l = []
 
     if verbose:
-        click.echo("Input query is: \n{}\n".format(query))
+        click.echo("Input query is:\n{}\n".format(query))
 
     if jsons:
-        click.echo("Parsing json parameters:")
+        if verbose:
+            click.echo("Parsing json parameters:")
     for j in jsons:
         if verbose:
             click.echo(j)
         l.append(json.loads(j))
 
     results = _query(ctx, query, l, mode)
+    if verbose:
+        click.echo("\nResults:")
+
     if isinstance(results,list):
         for row in results:
             click.echo(row)
