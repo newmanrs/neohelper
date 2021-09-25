@@ -111,18 +111,21 @@ def query(ctx, *args, **kwargs):
     l = []
 
     if verbose:
-        click.echo("Input query is: \n{}".format(query))
+        click.echo("Input query is: \n{}\n".format(query))
 
+    if jsons:
+        click.echo("Parsing json parameters:")
     for j in jsons:
         if verbose:
-            click.echo("Parsing json parameters:")
             click.echo(j)
         l.append(json.loads(j))
 
     results = _query(ctx, query, l, mode)
-    #for row in results:
-    #    click.echo(row)
-    #click.echo(results)
+    if isinstance(results,list):
+        for row in results:
+            click.echo(row)
+    else:
+        click.echo(results)
 
 def _query(ctx, query, params =[], mode = 'read'):
     with ctx.obj['driver'].session() as session:
