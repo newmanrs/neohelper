@@ -1,4 +1,5 @@
 from neo4j import GraphDatabase
+import neo4j
 import os
 import json
 import click
@@ -22,12 +23,14 @@ def cli(ctx,uri,db_pw_env_var):
     try:
         pw = os.environ[db_pw_env_var]
     except KeyError as e:
-        msg = "No environment variable `NEO4J_PW` found. " \
-            "Export NEO4J_PW='yourpassword' " \
+        msg = f"No neo4j password environment variable '{db_pw_env_var}'. " \
+            f"Export {db_pw_env_var}='yourpassword' " \
             "in the current shell environment or in your shell config file."
         raise KeyError(msg) from e
 
     driver = GraphDatabase.driver(uri, auth=("neo4j", pw))
+
+
     ctx.obj = {'driver' : driver}  # Store in click pass_context
 
 
@@ -163,12 +166,20 @@ def query(ctx, *args, **kwargs):
         click.echo(results)
 
 def _query(ctx, query, params =[], mode = 'read'):
-    with ctx.obj['driver'].session() as session:
-        if mode == 'read':
-            txfn = session.read_transaction
-        else:
-            txfn = session.write_transaction
-    return txfn(_tx_func, query, params)
+
+    # Apparently neo4j driver auth errors throw on
+    # sessions, and not on creation of the driver.
+    try:
+        with ctx.obj['driver'].session() as session:
+            if mode == 'read':
+                txfn = session.read_transaction
+            else:
+                txfn = session.write_transaction
+        return txfn(_tx_func, query, params)
+    except neo4j.exceptions.AuthError as e:
+        msg = "Probably incorrect password."
+        raise ValueError(msg) from e
+
 
 def _tx_func(tx, query, params):
     if params:
