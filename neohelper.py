@@ -26,10 +26,7 @@ def cli(ctx,uri,db_pw_env_var):
         raise KeyError(msg)
 
     driver = GraphDatabase.driver(uri, auth=("neo4j", pw))
-
-    ctx.obj = {
-        'driver':driver,
-        }
+    ctx.obj = {'driver' : driver}  # Store in click pass_context
 
 
 @cli.command()
@@ -145,6 +142,13 @@ def query(ctx, *args, **kwargs):
         if verbose:
             click.echo(j)
         l.append(json.loads(j))
+
+    if l:
+        if '$param' not in query:
+            msg = "Received query:\n{}\n".format(query) + \
+            " Query with parameters must contain '$param'. " \
+            " Did you forget to escape with backslash?"
+            raise AttributeError(msg)
 
     results = _query(ctx, query, l, mode)
     if verbose:
