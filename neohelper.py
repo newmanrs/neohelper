@@ -60,8 +60,8 @@ def count(ctx):
     multiple = True,
     help="Specify node labels to be counted. Option can be used multiple times " \
     " to specify multiple labels.  Returns -1 if no node by that label exists")
-def count_labels(ctx, *args, **kwargs):
-    """ Count of each node label """
+def count_node_labels(ctx, *args, **kwargs):
+    """ Count of nodes by label """
 
     query = """
     call db.labels() yield label
@@ -94,6 +94,60 @@ def count_labels(ctx, *args, **kwargs):
             l = lc['label'].ljust(label_len)
             c = lc['count']
             click.echo(f"{l} : {c}")
+
+@cli.command()
+@click.pass_context
+@click.option('--labels', '-l',
+    type=str,
+    multiple = True,
+    help="Specify relationship types to be counted. Option can be used multiple times " \
+    " to specify multiple labels.  Returns -1 if no node by that label exists")
+def count_relationship_types(ctx, *args, **kwargs):
+    """ Count of relationships by type """
+
+    query = """
+    CALL db.relationshipTypes() YIELD relationshipType as type
+    return collect(type) as relationship_types
+    """
+    record = _query(ctx,query)
+
+    results = []
+    # Can't parameterize over type in native cypher (need APOC) or
+    # to query the relations type by type as done here.
+    for t in record['relationship_types']:
+        query = f"""
+        match ()-[t:{t}]->()
+        return count(t) as count
+        """
+        res = _query(ctx,query)
+        results.append({'label' : t, 'count' : res['count']})
+
+    results = sorted(results, key = lambda k : k['count'],reverse=True)
+
+    labels = kwargs['labels']
+
+    #Filter from the results for all labels for ones given.
+    if labels:
+        lcl = []
+        for label in labels:
+            lc = {'label' : label, 'count' : -1}
+            for r in results:
+                if label == r['label']:
+                    lc['count'] = r['count']
+            lcl.append(lc)
+
+        results = sorted(lcl, key = lambda k : k['count'],reverse=True)
+
+    if len(results) == 0:
+        click.echo("Database has no relationships")
+    else:
+        #click.echo("Database contains :")
+        label_len = max([len(lc['label']) for lc in results])
+        for lc in results:
+            l = lc['label'].ljust(label_len)
+            c = lc['count']
+            click.echo(f"{l} : {c}")
+
 
 @cli.command()
 @click.pass_context
@@ -204,7 +258,7 @@ def _tx_func(tx, query, params):
 @cli.command()
 @click.pass_context
 def detach_delete(ctx):
-    """  Delete all nodes and relationships in the database """
+    """ Delete all nodes and relationships """
 
     query = """
     MATCH (n) DETACH DELETE (n)
