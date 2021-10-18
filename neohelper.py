@@ -4,17 +4,20 @@ import os
 import json
 import click
 
+
 @click.group()
-@click.option('--uri',
-    default = "neo4j://localhost:7687",
-    help = "Database uri",
-    show_default = True)
-@click.option('--db_pw_env_var',
-    default = 'NEO4J_PW',
-    help = "Environmental var containing neo4j database password",
-    show_default = True)
+@click.option(
+    '--uri',
+    default="neo4j://localhost:7687",
+    help="Database uri",
+    show_default=True)
+@click.option(
+    '--db_pw_env_var',
+    default='NEO4J_PW',
+    help="Environmental var containing neo4j database password",
+    show_default=True)
 @click.pass_context
-def cli(ctx,uri,db_pw_env_var):
+def cli(ctx, uri, db_pw_env_var):
     """
     Interface for monitoring and interacting with Neo4j databases.
     Invoke `neohelper command --help` for details on each command.
@@ -30,8 +33,7 @@ def cli(ctx,uri,db_pw_env_var):
 
     driver = GraphDatabase.driver(uri, auth=("neo4j", pw))
 
-
-    ctx.obj = {'driver' : driver}  # Store in click pass_context
+    ctx.obj = {'driver': driver}  # Store in click pass_context
 
 
 @cli.command()
@@ -52,14 +54,19 @@ def count(ctx):
     click.echo(f"Database contains {nc} nodes and {ec} relationships")
 
 
-
 @cli.command()
 @click.pass_context
-@click.option('--labels', '-l',
+@click.option(
+    '--labels', '-l',
     type=str,
-    multiple = True,
-    help="Specify node labels to be counted. Option can be used multiple times " \
-    " to specify multiple labels.  Returns -1 if no node by that label exists")
+    multiple=True,
+    help=(
+        "Specify node labels to be counted. "
+        "Option can be used multiple times "
+        " to specify multiple labels. "
+        "Returns -1 if no node by that label exists"
+        )
+    )
 def count_node_labels(ctx, *args, **kwargs):
     """ Count of nodes by label """
 
@@ -69,39 +76,46 @@ def count_node_labels(ctx, *args, **kwargs):
     with label, count(n) as count order by count DESC
     return collect({label : label, count : count}) as label_counts
     """
-    record = _query(ctx,query)
+    record = _query(ctx, query)
     labels = kwargs['labels']
     results = record['label_counts']
 
-    #Filter from the results for all labels for ones given.
+    # Filter from the results for all labels for ones given.
     if labels:
         lcl = []
         for label in labels:
-            lc = {'label' : label, 'count' : -1}
+            lc = {'label': label, 'count': -1}
             for r in results:
                 if label == r['label']:
                     lc['count'] = r['count']
             lcl.append(lc)
 
-        results = sorted(lcl, key = lambda k : k['count'],reverse=True)
+        results = sorted(lcl, key=lambda k: k['count'], reverse=True)
 
     if len(results) == 0:
         click.echo("Database has no nodes")
     else:
-        #click.echo("Database contains :")
+        # click.echo("Database contains :")
         label_len = max([len(lc['label']) for lc in results])
         for lc in results:
             l = lc['label'].ljust(label_len)
             c = lc['count']
             click.echo(f"{l} : {c}")
 
+
 @cli.command()
 @click.pass_context
-@click.option('--labels', '-l',
+@click.option(
+    '--labels', '-l',
     type=str,
-    multiple = True,
-    help="Specify relationship types to be counted. Option can be used multiple times " \
-    " to specify multiple labels.  Returns -1 if no node by that label exists")
+    multiple=True,
+    help=(
+        "Specify relationship types to be counted. "
+        "Option can be used multiple times "
+        "to specify multiple labels. "
+        "Returns -1 if no node by that label exists"
+        )
+    )
 def count_relationship_types(ctx, *args, **kwargs):
     """ Count of relationships by type """
 
@@ -109,7 +123,7 @@ def count_relationship_types(ctx, *args, **kwargs):
     CALL db.relationshipTypes() YIELD relationshipType as type
     return collect(type) as relationship_types
     """
-    record = _query(ctx,query)
+    record = _query(ctx, query)
 
     results = []
     # Can't parameterize over type in native cypher (need APOC) or
@@ -119,29 +133,28 @@ def count_relationship_types(ctx, *args, **kwargs):
         match ()-[t:{t}]->()
         return count(t) as count
         """
-        res = _query(ctx,query)
-        results.append({'label' : t, 'count' : res['count']})
+        res = _query(ctx, query)
+        results.append({'label': t, 'count': res['count']})
 
-    results = sorted(results, key = lambda k : k['count'],reverse=True)
+    results = sorted(results, key=lambda k: k['count'], reverse=True)
 
     labels = kwargs['labels']
 
-    #Filter from the results for all labels for ones given.
+    # Filter from the results for all labels for ones given.
     if labels:
         lcl = []
         for label in labels:
-            lc = {'label' : label, 'count' : -1}
+            lc = {'label': label, 'count': -1}
             for r in results:
                 if label == r['label']:
                     lc['count'] = r['count']
             lcl.append(lc)
 
-        results = sorted(lcl, key = lambda k : k['count'],reverse=True)
+        results = sorted(lcl, key=lambda k: k['count'], reverse=True)
 
     if len(results) == 0:
         click.echo("Database has no relationships")
     else:
-        #click.echo("Database contains :")
         label_len = max([len(lc['label']) for lc in results])
         for lc in results:
             l = lc['label'].ljust(label_len)
@@ -151,20 +164,29 @@ def count_relationship_types(ctx, *args, **kwargs):
 
 @cli.command()
 @click.pass_context
-@click.argument('query',type=str)
-@click.option('--mode',
-    type=click.Choice(['read', 'write'],
-    case_sensitive=False),
-    default = 'read',
-    show_default = True)
-@click.option('--json','-j',
+@click.argument('query', type=str)
+@click.option(
+    '--mode',
+    type=click.Choice(
+        ['read', 'write'],
+        case_sensitive=False),
+    default='read',
+    show_default=True)
+@click.option(
+    '--json', '-j',
     multiple=True,
-    help = "Add json string to the query as a list variable $params.  Use multiple -j flags, one per each to fill list.  Be sure in your query to escape \"UNWIND \$params\"")
-@click.option('--verbose', '-v',
-    default = False,
-    is_flag = True)
+    help=(
+        "Add json string to the query as a list variable $params. "
+        "Use multiple -j flags, one per each to fill list.  Be sure "
+        "in your query to escape \"UNWIND \$params\""
+        )
+    )
+@click.option(
+    '--verbose', '-v',
+    default=False,
+    is_flag=True)
 def query(ctx, *args, **kwargs):
-    """ 
+    """
     Perform given cypher query, with optional parameters
 
     Example:
@@ -205,21 +227,22 @@ def query(ctx, *args, **kwargs):
     if l:
         if '$param' not in query:
             msg = "Received query:\n{}\n".format(query) + \
-            " Query with parameters must contain '$param'. " \
-            " Did you forget to escape with backslash?"
+                " Query with parameters must contain '$param'. " \
+                " Did you forget to escape with backslash?"
             raise AttributeError(msg)
 
     results = _query(ctx, query, l, mode)
     if verbose:
         click.echo("\nResults:")
 
-    if isinstance(results,list):
+    if isinstance(results, list):
         for row in results:
             click.echo(row)
     else:
         click.echo(results)
 
-def _query(ctx, query, params =[], mode = 'read'):
+
+def _query(ctx, query, params=[], mode='read'):
 
     # Apparently neo4j driver auth errors throw on
     # sessions, and not on creation of the driver.
@@ -237,23 +260,23 @@ def _query(ctx, query, params =[], mode = 'read'):
 
 def _tx_func(tx, query, params):
     if params:
-        results = tx.run(query,params=params)
+        results = tx.run(query, params=params)
     else:
         results = tx.run(query)
     l = []
     for r in results:
-        #click.echo(r)
         keys = r.keys()
         values = r.values()
         d = dict()
-        for k,v in zip(keys,values):
-            d[k]=v
+        for k, v in zip(keys, values):
+            d[k] = v
         l.append(d)
     if len(l) == 0:
         return None
     elif len(l) == 1:
         return l[0]
     return l
+
 
 @cli.command()
 @click.pass_context
