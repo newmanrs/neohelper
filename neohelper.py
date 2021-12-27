@@ -3,35 +3,65 @@ import neo4j
 import os
 import json
 import click
+import traceback
+
+def get_env_variable(var):
+    try:
+        var = os.environ[var]
+    except KeyError as e:
+        msg = f"Environmental variable '{var}' not found"
+        raise KeyError(msg) # from e
+    return var
+
+def get_neo4j_driver(user_ev, pw_ev, uri_ev):
+
+    errs = []
+    try:
+        user = get_env_variable(user_ev)
+    except KeyError as e:
+        errs.append(e)
+    try:
+        pw = get_env_variable(pw_ev)
+    except KeyError as e:
+        errs.append(e)
+    try:
+        uri = get_env_variable(uri_ev)
+    except KeyError as e:
+        errs.append(e)
+    if errs:
+        raise KeyError(errs)
+
+    driver = GraphDatabase.driver(uri, auth=(user, pw))
+    return driver
 
 
 @click.group()
+
+@click.option(
+    '--user',
+    default='NEO4J_USER',
+    help="Environmental variable containing neo4j username"
+    )
+@click.option(
+    '--pw',
+    default='NEO4J_PW',
+    help="Environmental variable containing neo4j database password",
+    show_default=True
+    )
 @click.option(
     '--uri',
-    default="neo4j://localhost:7687",
-    help="Database uri",
-    show_default=True)
-@click.option(
-    '--db_pw_env_var',
-    default='NEO4J_PW',
-    help="Environmental var containing neo4j database password",
-    show_default=True)
+    default="NEO4J_URI",
+    help="Environmental variable storing Neo4j"
+        "uri (i.e. neo4j://localhost:7678)",
+    show_default=True
+    )
 @click.pass_context
-def cli(ctx, uri, db_pw_env_var):
+def cli(ctx, user, pw, uri):
     """
     Interface for monitoring and interacting with Neo4j databases.
     Invoke `neohelper command --help` for details on each command.
     """
-
-    try:
-        pw = os.environ[db_pw_env_var]
-    except KeyError as e:
-        msg = f"No neo4j password environment variable '{db_pw_env_var}'. " \
-            f"Export {db_pw_env_var}='yourpassword' " \
-            "in the current shell environment or in your shell config file."
-        raise KeyError(msg) from e
-
-    driver = GraphDatabase.driver(uri, auth=("neo4j", pw))
+    driver = get_neo4j_driver(user, pw, uri)
 
     ctx.obj = {'driver': driver}  # Store in click pass_context
 

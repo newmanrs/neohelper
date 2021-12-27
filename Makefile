@@ -6,7 +6,7 @@ install:
 
 uninstall:
 	@echo 'Uninstalling'
-	pip3 uninstall rpncalc
+	pip3 uninstall neohelper
 
 test:
 	@echo 'Testing'
@@ -20,9 +20,9 @@ clean:
 		echo 'Removing build'; \
 		rm -r build; \
 	fi
-	@if [ -d "rpncalc.egg-info" ]; then \
-		echo 'Removing rpncalc.egg-info'; \
-		rm -r rpncalc.egg-info; \
+	@if [ -d *.egg-info ]; then \
+		echo 'Removing *.egg-info'; \
+		rm -r *.egg-info; \
 	fi
 
 lint:
