@@ -279,3 +279,24 @@ def detach_delete(ctx):
     MATCH (n) DETACH DELETE (n)
     """
     _query(ctx, query, mode='write')
+
+
+@cli.command()
+@click.pass_context
+@click.option(
+    '--indent', '-i',
+    type=int,
+    default=None,
+    help=(
+        "Set indentation of json printout"
+        )
+    )
+def show_indexes(ctx, indent):
+    """
+    Print database indexes
+    """
+
+    query = "SHOW INDEXES"
+    results = _query(ctx, query, mode='write')
+    for r in results:
+        print(json.dumps(r,indent=indent))
