@@ -21,6 +21,9 @@ def _get_env_variable(var):
 
 def init_neo4j_driver(user_ev, pw_ev, uri_ev):
 
+    # Create new driver if none exists yet, otherwise
+    # return existing driver.
+
     if neohelper.utils.driver is None:
 
         errs = []

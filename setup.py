@@ -4,6 +4,7 @@ setup(
     name='neohelper',
     version='0.1.0',
     py_modules=['neohelper'],
+    packages=['neohelper'],
     install_requires=[
         'click',
         'neo4j-driver'
