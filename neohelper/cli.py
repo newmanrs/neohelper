@@ -1,42 +1,9 @@
-from neo4j import GraphDatabase
-import neo4j
-import os
 import json
 import click
-import traceback
-
-def get_env_variable(var):
-    try:
-        var = os.environ[var]
-    except KeyError as e:
-        msg = f"Environmental variable '{var}' not found"
-        raise KeyError(msg) # from e
-    return var
-
-def get_neo4j_driver(user_ev, pw_ev, uri_ev):
-
-    errs = []
-    try:
-        user = get_env_variable(user_ev)
-    except KeyError as e:
-        errs.append(e)
-    try:
-        pw = get_env_variable(pw_ev)
-    except KeyError as e:
-        errs.append(e)
-    try:
-        uri = get_env_variable(uri_ev)
-    except KeyError as e:
-        errs.append(e)
-    if errs:
-        raise KeyError(errs)
-
-    driver = GraphDatabase.driver(uri, auth=(user, pw))
-    return driver
+import neohelper.utils
 
 
 @click.group()
-
 @click.option(
     '--user',
     default='NEO4J_USER',
@@ -52,7 +19,7 @@ def get_neo4j_driver(user_ev, pw_ev, uri_ev):
     '--uri',
     default="NEO4J_URI",
     help="Environmental variable storing Neo4j"
-        "uri (i.e. neo4j://localhost:7678)",
+         "uri (i.e. neo4j://localhost:7687)",
     show_default=True
     )
 @click.pass_context
@@ -61,8 +28,7 @@ def cli(ctx, user, pw, uri):
     Interface for monitoring and interacting with Neo4j databases.
     Invoke `neohelper command --help` for details on each command.
     """
-    driver = get_neo4j_driver(user, pw, uri)
-
+    driver = neohelper.utils.init_neo4j_driver(user, pw, uri)
     ctx.obj = {'driver': driver}  # Store in click pass_context
 
 
@@ -206,9 +172,11 @@ def count_relationship_types(ctx, *args, **kwargs):
     '--json', '-j',
     multiple=True,
     help=(
-        "Add json string to the query as a list variable $params. "
+        "Add json string to the query as a list variable $params"
+        " containing each as a dictionary"
         "Use multiple -j flags, one per each to fill list.  Be sure "
-        "in your query to escape \"UNWIND \$params\""
+        "in your query to escape \\$params to prevent your shell "
+        "from doing variable substitution"
         )
     )
 @click.option(
@@ -223,7 +191,7 @@ def query(ctx, *args, **kwargs):
 
     \b
     neohelper query \\
-    "with \$params as jsons
+    "with \\$params as jsons
     unwind  jsons as json
     MERGE (p:Person {
         name : json.name,
@@ -263,29 +231,23 @@ def query(ctx, *args, **kwargs):
 
     results = _query(ctx, query, l, mode)
     if verbose:
-        click.echo("\nResults:")
+        click.echo(f"\nResults:\n{results}")
 
     if isinstance(results, list):
         for row in results:
             click.echo(row)
     else:
-        click.echo(results)
+        click.echo(f"{results}")
 
 
-def _query(ctx, query, params=[], mode='read'):
+def _query(ctx, query, params=None, mode='read'):
 
-    # Apparently neo4j driver auth errors throw on
-    # sessions, and not on creation of the driver.
-    try:
-        with ctx.obj['driver'].session() as session:
-            if mode == 'read':
-                txfn = session.read_transaction
-            else:
-                txfn = session.write_transaction
+    with ctx.obj['driver'].session() as session:
+        if mode == 'read':
+            txfn = session.read_transaction
+        else:
+            txfn = session.write_transaction
         return txfn(_tx_func, query, params)
-    except neo4j.exceptions.AuthError as e:
-        msg = "Probably incorrect password."
-        raise ValueError(msg) from e
 
 
 def _tx_func(tx, query, params):

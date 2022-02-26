@@ -10,7 +10,7 @@ setup(
     ],
     entry_points={
         'console_scripts': [
-            'neohelper=neohelper:cli',
+            'neohelper=neohelper.cli:cli',
         ],
     },
 )
