@@ -244,7 +244,7 @@ def detach_delete():
     query = """
     MATCH (n) DETACH DELETE (n)
     """
-    neohelper._write_query(query, mode='write')
+    neohelper._write_query(query)
 
 
 @cli.command()
@@ -263,3 +263,14 @@ def show_indexes(*args, **kwargs):
     results = neohelper.get_all_indexes()
     for r in results:
         click.echo(json.dumps(r, indent=kwargs['indent']))
+
+"""
+@cli.command()
+def test(*args, **kwargs):
+
+    query = "MERGE (c:Company {name : $name, location : $location})"
+
+            print(query)
+    neohelper._write_query(query, name='Dupont', location='Boston')
+
+"""

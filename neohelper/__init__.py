@@ -55,22 +55,23 @@ def get_driver():
     return neohelper.driver
 
 
-def _read_query(query, *args, **kwargs):
+def _read_query(query, **kwargs):
 
     with get_driver().session() as session:
         s = session.read_transaction
-        return s(_tx_func, query, *args, **kwargs)
+        return s(_tx_func, query, **kwargs)
 
 
-def _write_query(query, *args, **kwargs):
+def _write_query(query, **kwargs):
+
     with get_driver().session() as session:
         s = session.write_transaction
-        return s(_tx_func, query, *args, **kwargs)
+        return s(_tx_func, query, **kwargs)
 
 
-def _tx_func(tx, query, *args, **kwargs):
+def _tx_func(tx, query, **kwargs):
 
-    results = tx.run(query, *args, **kwargs)
+    results = tx.run(query, **kwargs)
     l = []
     for r in results:
         keys = r.keys()
