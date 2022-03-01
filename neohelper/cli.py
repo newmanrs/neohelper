@@ -1,6 +1,6 @@
 import json
 import click
-import neohelper.utils
+import neohelper
 
 
 @click.group()
@@ -22,19 +22,17 @@ import neohelper.utils
          "uri (i.e. neo4j://localhost:7687)",
     show_default=True
     )
-@click.pass_context
-def cli(ctx, user, pw, uri):
+def cli(user, pw, uri):
     """
     Interface for monitoring and interacting with Neo4j databases.
     Invoke `neohelper command --help` for details on each command.
     """
-    driver = neohelper.utils.init_neo4j_driver(user, pw, uri)
-    ctx.obj = {'driver': driver}  # Store in click pass_context
+
+    neohelper.init_neo4j_driver(user, pw, uri)
 
 
 @cli.command()
-@click.pass_context
-def count(ctx):
+def count():
     """ Display count of nodes and edges database """
 
     query = """
@@ -44,14 +42,13 @@ def count(ctx):
         RETURN {node_count : node_count, edge_count : edge_count} as counts
     """
 
-    result = _query(ctx, query)
+    result = neohelper._read_query(query)
     nc = result['counts']['node_count']
     ec = result['counts']['edge_count']
     click.echo(f"Database contains {nc} nodes and {ec} relationships")
 
 
 @cli.command()
-@click.pass_context
 @click.option(
     '--labels', '-l',
     type=str,
@@ -63,7 +60,7 @@ def count(ctx):
         "Returns -1 if no node by that label exists"
         )
     )
-def count_node_labels(ctx, *args, **kwargs):
+def count_node_labels(*args, **kwargs):
     """ Count of nodes by label """
 
     query = """
@@ -72,7 +69,7 @@ def count_node_labels(ctx, *args, **kwargs):
     with label, count(n) as count order by count DESC
     return collect({label : label, count : count}) as label_counts
     """
-    record = _query(ctx, query)
+    record = neohelper._read_query(query)
     labels = kwargs['labels']
     results = record['label_counts']
 
@@ -91,16 +88,14 @@ def count_node_labels(ctx, *args, **kwargs):
     if len(results) == 0:
         click.echo("Database has no nodes")
     else:
-        # click.echo("Database contains :")
         label_len = max([len(lc['label']) for lc in results])
         for lc in results:
             l = lc['label'].ljust(label_len)
             c = lc['count']
-            click.echo(f"{l} : {c}")
+            click.echo(f"{l}: {c}")
 
 
 @cli.command()
-@click.pass_context
 @click.option(
     '--labels', '-l',
     type=str,
@@ -112,14 +107,14 @@ def count_node_labels(ctx, *args, **kwargs):
         "Returns -1 if no node by that label exists"
         )
     )
-def count_relationship_types(ctx, *args, **kwargs):
+def count_relationship_types(*args, **kwargs):
     """ Count of relationships by type """
 
     query = """
     CALL db.relationshipTypes() YIELD relationshipType as type
     return collect(type) as relationship_types
     """
-    record = _query(ctx, query)
+    record = neohelper._read_query(query)
 
     results = []
     # Can't parameterize over type in native cypher (need APOC) or
@@ -129,7 +124,7 @@ def count_relationship_types(ctx, *args, **kwargs):
         match ()-[t:{t}]->()
         return count(t) as count
         """
-        res = _query(ctx, query)
+        res = neohelper._read_query(query)
         results.append({'label': t, 'count': res['count']})
 
     results = sorted(results, key=lambda k: k['count'], reverse=True)
@@ -159,7 +154,6 @@ def count_relationship_types(ctx, *args, **kwargs):
 
 
 @cli.command()
-@click.pass_context
 @click.argument('query', type=str)
 @click.option(
     '--mode',
@@ -183,7 +177,7 @@ def count_relationship_types(ctx, *args, **kwargs):
     '--verbose', '-v',
     default=False,
     is_flag=True)
-def query(ctx, *args, **kwargs):
+def query(*args, **kwargs):
     """
     Perform given cypher query, with optional parameters
 
@@ -191,8 +185,7 @@ def query(ctx, *args, **kwargs):
 
     \b
     neohelper query \\
-    "with \\$params as jsons
-    unwind  jsons as json
+    "unwind  \\$jsons as json
     MERGE (p:Person {
         name : json.name,
         age : json.age
@@ -209,7 +202,7 @@ def query(ctx, *args, **kwargs):
     jsons = kwargs['json']
     verbose = kwargs['verbose']
 
-    l = []
+    dlist = []
 
     if verbose:
         click.echo("Input query is:\n{}\n".format(query))
@@ -220,18 +213,22 @@ def query(ctx, *args, **kwargs):
     for j in jsons:
         if verbose:
             click.echo(j)
-        l.append(json.loads(j))
+        dlist.append(json.loads(j))
 
-    if l:
-        if '$param' not in query:
+    if jsons:
+        if '$json' not in query:
             msg = "Received query:\n{}\n".format(query) + \
-                " Query with parameters must contain '$param'. " \
+                " Query with parameters must contain '$json'. " \
                 " Did you forget to escape with backslash?"
             raise AttributeError(msg)
 
-    results = _query(ctx, query, l, mode)
+    if mode == 'write':
+        results = neohelper._write_query(query, jsons=dlist)
+    else:
+        results = neohelper._read_query(query, jsons=dlist)
+
     if verbose:
-        click.echo(f"\nResults:\n{results}")
+        click.echo("Results:")
 
     if isinstance(results, list):
         for row in results:
@@ -240,49 +237,17 @@ def query(ctx, *args, **kwargs):
         click.echo(f"{results}")
 
 
-def _query(ctx, query, params=None, mode='read'):
-
-    with ctx.obj['driver'].session() as session:
-        if mode == 'read':
-            txfn = session.read_transaction
-        else:
-            txfn = session.write_transaction
-        return txfn(_tx_func, query, params)
-
-
-def _tx_func(tx, query, params):
-    if params:
-        results = tx.run(query, params=params)
-    else:
-        results = tx.run(query)
-    l = []
-    for r in results:
-        keys = r.keys()
-        values = r.values()
-        d = dict()
-        for k, v in zip(keys, values):
-            d[k] = v
-        l.append(d)
-    if len(l) == 0:
-        return None
-    elif len(l) == 1:
-        return l[0]
-    return l
-
-
 @cli.command()
-@click.pass_context
-def detach_delete(ctx):
+def detach_delete():
     """ Delete all nodes and relationships """
 
     query = """
     MATCH (n) DETACH DELETE (n)
     """
-    _query(ctx, query, mode='write')
+    neohelper._write_query(query, mode='write')
 
 
 @cli.command()
-@click.pass_context
 @click.option(
     '--indent', '-i',
     type=int,
@@ -291,12 +256,10 @@ def detach_delete(ctx):
         "Set indentation of json printout"
         )
     )
-def show_indexes(ctx, indent):
+def show_indexes(*args, **kwargs):
     """
     Print database indexes
     """
-
-    query = "SHOW INDEXES"
-    results = _query(ctx, query, mode='write')
+    results = neohelper.get_all_indexes()
     for r in results:
-        print(json.dumps(r,indent=indent))
+        click.echo(json.dumps(r, indent=kwargs['indent']))

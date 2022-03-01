@@ -1,6 +1,5 @@
 neohelper query \
-"with \$params as jsons
-unwind  jsons as json
+"unwind  \$jsons as json
 MERGE (p:Person {
     name : json.name,
     age : json.age

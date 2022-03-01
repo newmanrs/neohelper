@@ -27,4 +27,6 @@ clean:
 
 lint:
 	@echo "Lint"
-	flake8
+	@flake8 \
+		--exclude=build, \
+		--ignore=E126,E123,E741
