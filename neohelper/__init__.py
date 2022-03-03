@@ -58,7 +58,7 @@ def init_neo4j_driver(
 
     if neohelper.database is None:
         query = "show default database yield name"
-        set_database(_read_query(query)['name'])
+        set_database(read_query(query)['name'])
 
 
 def get_driver():
@@ -68,14 +68,14 @@ def get_driver():
     return neohelper.driver
 
 
-def _read_query(query, **kwargs):
+def read_query(query, **kwargs):
 
     with get_driver().session(database=neohelper.database) as session:
         s = session.read_transaction
         return s(_tx_func, query, **kwargs)
 
 
-def _write_query(query, **kwargs):
+def write_query(query, **kwargs):
 
     with get_driver().session(database=neohelper.database) as session:
         s = session.write_transaction
@@ -102,7 +102,7 @@ def _tx_func(tx, query, **kwargs):
 
 def get_all_indexes():
     query = "SHOW INDEX"
-    results = _write_query(query)
+    results = write_query(query)
     return results
 
 
@@ -111,23 +111,23 @@ def get_database_names():
         SHOW DATABASES yield name
         return collect(name) as names
     """
-    return _read_query(query)['names']
+    return read_query(query)['names']
 
 
 def create_database(database):
     query = f"CREATE DATABASE {database}"
-    results = _write_query(query)
+    results = write_query(query)
 
 def drop_database(database):
     query = f"DROP DATABASE {database}"
-    results = _write_query(query)
+    results = write_query(query)
 
 def clear_database(database):
 
     db_names = get_database_names()
     if database in db_names:
         query = f"CREATE OR REPLACE DATABASE {database}"
-        _write_query(query)
+        write_query(query)
     else:
         raise ValueError(f"Database {database} not found")
 

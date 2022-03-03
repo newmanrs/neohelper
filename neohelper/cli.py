@@ -48,7 +48,7 @@ def count():
         RETURN {node_count : node_count, edge_count : edge_count} as counts
     """
 
-    result = neohelper._read_query(query)
+    result = neohelper.read_query(query)
     nc = result['counts']['node_count']
     ec = result['counts']['edge_count']
     click.echo(f"Database contains {nc} nodes and {ec} relationships")
@@ -75,7 +75,7 @@ def count_node_labels(*args, **kwargs):
     with label, count(n) as count order by count DESC
     return collect({label : label, count : count}) as label_counts
     """
-    record = neohelper._read_query(query)
+    record = neohelper.read_query(query)
     labels = kwargs['labels']
     results = record['label_counts']
 
@@ -120,7 +120,7 @@ def count_relationship_types(*args, **kwargs):
     CALL db.relationshipTypes() YIELD relationshipType as type
     return collect(type) as relationship_types
     """
-    record = neohelper._read_query(query)
+    record = neohelper.read_query(query)
 
     results = []
     # Can't parameterize over type in native cypher (need APOC) or
@@ -130,7 +130,7 @@ def count_relationship_types(*args, **kwargs):
         match ()-[t:{t}]->()
         return count(t) as count
         """
-        res = neohelper._read_query(query)
+        res = neohelper.read_query(query)
         results.append({'label': t, 'count': res['count']})
 
     results = sorted(results, key=lambda k: k['count'], reverse=True)
@@ -235,9 +235,9 @@ def query(*args, **kwargs):
             raise AttributeError(msg)
 
     if write:
-        results = neohelper._write_query(query, jsons=dlist)
+        results = neohelper.write_query(query, jsons=dlist)
     else:
-        results = neohelper._read_query(query, jsons=dlist)
+        results = neohelper.read_query(query, jsons=dlist)
 
     if verbose:
         click.echo("Results:")
