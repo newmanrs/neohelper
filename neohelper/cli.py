@@ -22,12 +22,18 @@ import neohelper
          "uri (i.e. neo4j://localhost:7687)",
     show_default=True
     )
-def cli(user, pw, uri):
+@click.option(
+    '--db',
+    default=None,
+    help="Name of database to use, None for default db",
+    show_default=True
+    )
+def cli(user, pw, uri, db):
     """
     Interface for monitoring and interacting with Neo4j databases.
     Invoke `neohelper command --help` for details on each command.
     """
-
+    neohelper.set_database(db)
     neohelper.init_neo4j_driver(user, pw, uri)
 
 
@@ -248,6 +254,20 @@ def detach_delete():
 
 
 @cli.command()
+@click.argument(
+    'database',
+    type=str,
+    )
+def clear(database):
+    """ Delete all nodes, relationships, and indexes """
+
+    query = f"""
+    CREATE OR REPLACE DATABASE {database}
+    """
+    neohelper._write_query(query)
+
+
+@cli.command()
 @click.option(
     '--indent', '-i',
     type=int,
@@ -261,8 +281,12 @@ def show_indexes(*args, **kwargs):
     Print database indexes
     """
     results = neohelper.get_all_indexes()
-    for r in results:
-        click.echo(json.dumps(r, indent=kwargs['indent']))
+    if results:
+        for r in results:
+            click.echo(json.dumps(r, indent=kwargs['indent']))
+    else:
+        click.echo("No indexes")
+
 
 """
 @cli.command()

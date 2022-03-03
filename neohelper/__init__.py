@@ -9,9 +9,14 @@ warnings.filterwarnings("ignore", category=ExperimentalWarning)
 
 # Store copy of driver in module once initialized
 driver = None
+database = None
 
 
-def _get_env_variable(var):
+def set_database(database: str):
+    neohelper.database = database
+
+
+def _get_env_variable(var: str):
     try:
         var = os.environ[var]
     except KeyError as e:
@@ -20,10 +25,15 @@ def _get_env_variable(var):
     return var
 
 
-def init_neo4j_driver(user_ev, pw_ev, uri_ev):
-
-    # Create new driver if none exists yet, otherwise
-    # return existing driver.
+def init_neo4j_driver(
+        user_ev='NEO4J_USER',
+        pw_ev='NEO4J_PW',
+        uri_ev='NEO4J_URI'):
+    """
+    Create new driver if none exists yet, otherwise
+    return existing driver.
+    Retrieves username, password, and URI from env vars
+    """
 
     if neohelper.driver is None:
 
@@ -47,6 +57,10 @@ def init_neo4j_driver(user_ev, pw_ev, uri_ev):
         driver.verify_connectivity()
         neohelper.driver = driver
 
+    if neohelper.database is None:
+        query = "show default database yield name"
+        set_database(_read_query(query)['name'])
+
 
 def get_driver():
     if neohelper.driver is None:
@@ -57,14 +71,14 @@ def get_driver():
 
 def _read_query(query, **kwargs):
 
-    with get_driver().session() as session:
+    with get_driver().session(database=neohelper.database) as session:
         s = session.read_transaction
         return s(_tx_func, query, **kwargs)
 
 
 def _write_query(query, **kwargs):
 
-    with get_driver().session() as session:
+    with get_driver().session(database=neohelper.database) as session:
         s = session.write_transaction
         return s(_tx_func, query, **kwargs)
 
