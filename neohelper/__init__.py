@@ -7,9 +7,8 @@ import neohelper
 warnings.filterwarnings("ignore", category=ExperimentalWarning)
 
 
-# Store copy of driver in module once initialized
-driver = None
-database = None
+driver = None   # Store Neo4j driver once initialized
+database = None # Name of database to use
 
 
 def set_database(database: str):
@@ -105,3 +104,30 @@ def get_all_indexes():
     query = "SHOW INDEX"
     results = _write_query(query)
     return results
+
+
+def get_database_names():
+    query = """
+        SHOW DATABASES yield name
+        return collect(name) as names
+    """
+    return _read_query(query)['names']
+
+
+def create_database(database):
+    query = f"CREATE DATABASE {database}"
+    results = _write_query(query)
+
+def drop_database(database):
+    query = f"DROP DATABASE {database}"
+    results = _write_query(query)
+
+def clear_database(database):
+
+    db_names = get_database_names()
+    if database in db_names:
+        query = f"CREATE OR REPLACE DATABASE {database}"
+        _write_query(query)
+    else:
+        raise ValueError(f"Database {database} not found")
+

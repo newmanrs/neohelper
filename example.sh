@@ -7,5 +7,5 @@ MERGE (p:Person {
 return count(p) as nodes_merged" \
 -j '{"name" : "John Jackson", "age" : "45" }' \
 -j '{"name" : "Jack Johnson", "age" : "53" }' \
---mode 'write' \
+--write \
 --verbose

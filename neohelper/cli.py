@@ -25,7 +25,7 @@ import neohelper
 @click.option(
     '--db',
     default=None,
-    help="Name of database to use, None for default db",
+    help="Name of the database to use for sessions and transactions.",
     show_default=True
     )
 def cli(user, pw, uri, db):
@@ -161,13 +161,19 @@ def count_relationship_types(*args, **kwargs):
 
 @cli.command()
 @click.argument('query', type=str)
+#@click.option(
+#    '--mode',
+#    type=click.Choice(
+#        ['read', 'write'],
+#        case_sensitive=False),
+#    default='read',
+#    show_default=True)
 @click.option(
-    '--mode',
-    type=click.Choice(
-        ['read', 'write'],
-        case_sensitive=False),
-    default='read',
-    show_default=True)
+    '--write',
+    is_flag='True',
+    help="run query in write mode",
+    default=False
+    )
 @click.option(
     '--json', '-j',
     multiple=True,
@@ -204,7 +210,7 @@ def query(*args, **kwargs):
     """
 
     query = kwargs['query']
-    mode = kwargs['mode']
+    write = kwargs['write']
     jsons = kwargs['json']
     verbose = kwargs['verbose']
 
@@ -228,7 +234,7 @@ def query(*args, **kwargs):
                 " Did you forget to escape with backslash?"
             raise AttributeError(msg)
 
-    if mode == 'write':
+    if write:
         results = neohelper._write_query(query, jsons=dlist)
     else:
         results = neohelper._read_query(query, jsons=dlist)
@@ -254,17 +260,49 @@ def detach_delete():
 
 
 @cli.command()
+def database_names():
+    """ Display database names """
+    click.echo(neohelper.get_database_names())
+
+
+@cli.command()
 @click.argument(
     'database',
     type=str,
     )
-def clear(database):
-    """ Delete all nodes, relationships, and indexes """
+def database_create(database):
+    """ Create new database with given name """
+    neohelper.create_database(database)
 
-    query = f"""
-    CREATE OR REPLACE DATABASE {database}
-    """
-    neohelper._write_query(query)
+
+@cli.command()
+@click.argument(
+    'database',
+    type=str,
+    )
+def database_drop(database):
+    """ Drop database with given name"""
+    neohelper.drop_database(database)
+
+
+@cli.command()
+@click.argument(
+    'database',
+    type=str,
+    nargs=-1
+    )
+def database_clear(database):
+    """ Delete all nodes, relationships, and indexes in named database """
+
+    # If tuple empty, wipe default db
+    if not database:
+        default = neohelper.database
+        click.echo(f"Wiping database {default}")
+        neohelper.clear_database(default)
+    else:
+        for d in database:
+            click.echo(f"Wiping database {d}")
+            neohelper.clear_database(d)
 
 
 @cli.command()
@@ -276,7 +314,7 @@ def clear(database):
         "Set indentation of json printout"
         )
     )
-def show_indexes(*args, **kwargs):
+def index_show(*args, **kwargs):
     """
     Print database indexes
     """
@@ -286,15 +324,3 @@ def show_indexes(*args, **kwargs):
             click.echo(json.dumps(r, indent=kwargs['indent']))
     else:
         click.echo("No indexes")
-
-
-"""
-@cli.command()
-def test(*args, **kwargs):
-
-    query = "MERGE (c:Company {name : $name, location : $location})"
-
-            print(query)
-    neohelper._write_query(query, name='Dupont', location='Boston')
-
-"""
