@@ -256,7 +256,7 @@ def detach_delete():
     query = """
     MATCH (n) DETACH DELETE (n)
     """
-    neohelper._write_query(query)
+    neohelper.write_query(query)
 
 
 @cli.command()
