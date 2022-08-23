@@ -1,5 +1,6 @@
 import os
 import warnings
+import atexit
 from neo4j import GraphDatabase
 from neo4j import ExperimentalWarning
 import neohelper
@@ -56,9 +57,9 @@ def init_neo4j_driver(
         driver.verify_connectivity()
         neohelper.driver = driver
 
-    if neohelper.database is None:
-        query = "show default database yield name"
-        set_database(read_query(query)['name'])
+    #if neohelper.database is None:
+    #    query = "show default database yield name"
+    #    set_database(read_query(query)['name'])
 
 
 def get_driver():
@@ -131,3 +132,7 @@ def clear_database(database):
     else:
         raise ValueError(f"Database {database} not found")
 
+def close_driver():
+    neohelper.driver.close()
+
+atexit.register(close_driver)
