@@ -161,13 +161,6 @@ def count_relationship_types(*args, **kwargs):
 
 @cli.command()
 @click.argument('query', type=str)
-#@click.option(
-#    '--mode',
-#    type=click.Choice(
-#        ['read', 'write'],
-#        case_sensitive=False),
-#    default='read',
-#    show_default=True)
 @click.option(
     '--write',
     is_flag='True',

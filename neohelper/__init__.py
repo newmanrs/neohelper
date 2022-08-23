@@ -8,8 +8,8 @@ import neohelper
 warnings.filterwarnings("ignore", category=ExperimentalWarning)
 
 
-driver = None   # Store Neo4j driver once initialized
-database = None # Name of database to use
+driver = None    # Store Neo4j driver once initialized
+database = None  # Name of database to use
 
 
 def set_database(database: str):
@@ -57,7 +57,9 @@ def init_neo4j_driver(
         driver.verify_connectivity()
         neohelper.driver = driver
 
-    #if neohelper.database is None:
+        atexit.register(close_driver)
+
+    # if neohelper.database is None:
     #    query = "show default database yield name"
     #    set_database(read_query(query)['name'])
 
@@ -117,11 +119,13 @@ def get_database_names():
 
 def create_database(database):
     query = f"CREATE DATABASE {database}"
-    results = write_query(query)
+    write_query(query)
+
 
 def drop_database(database):
     query = f"DROP DATABASE {database}"
-    results = write_query(query)
+    write_query(query)
+
 
 def clear_database(database):
 
@@ -132,7 +136,6 @@ def clear_database(database):
     else:
         raise ValueError(f"Database {database} not found")
 
+
 def close_driver():
     neohelper.driver.close()
-
-atexit.register(close_driver)
