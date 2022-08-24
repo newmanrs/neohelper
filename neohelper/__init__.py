@@ -15,7 +15,6 @@ database = None  # Name of database to use
 def set_database(database: str):
     neohelper.database = database
 
-
 def _get_env_variable(var: str):
     try:
         var = os.environ[var]
@@ -59,9 +58,10 @@ def init_neo4j_driver(
 
         atexit.register(close_driver)
 
-    # if neohelper.database is None:
-    #    query = "show default database yield name"
-    #    set_database(read_query(query)['name'])
+    if neohelper.database is None:
+        neohelper.database = 'system'
+        query = "show default database yield name"
+        set_database(read_query(query)['name'])
 
 
 def get_driver():
@@ -71,16 +71,22 @@ def get_driver():
     return neohelper.driver
 
 
-def read_query(query, **kwargs):
+def read_query(query, database=None, **kwargs):
 
-    with get_driver().session(database=neohelper.database) as session:
+    if database is None:
+        database = neohelper.database
+
+    with get_driver().session(database=database) as session:
         s = session.read_transaction
         return s(_tx_func, query, **kwargs)
 
 
-def write_query(query, **kwargs):
+def write_query(query, database=None, **kwargs):
 
-    with get_driver().session(database=neohelper.database) as session:
+    if database is None:
+        database = neohelper.database
+
+    with get_driver().session(database=database) as session:
         s = session.write_transaction
         return s(_tx_func, query, **kwargs)
 
@@ -114,17 +120,17 @@ def get_database_names():
         SHOW DATABASES yield name
         return collect(name) as names
     """
-    return read_query(query)['names']
+    return read_query(query, database='system')['names']
 
 
 def create_database(database):
     query = f"CREATE DATABASE {database}"
-    write_query(query)
+    write_query(query, database='system')
 
 
 def drop_database(database):
     query = f"DROP DATABASE {database}"
-    write_query(query)
+    write_query(query, database='system')
 
 
 def clear_database(database):
@@ -132,10 +138,18 @@ def clear_database(database):
     db_names = get_database_names()
     if database in db_names:
         query = f"CREATE OR REPLACE DATABASE {database}"
-        write_query(query)
+        write_query(query, database='system')
     else:
         raise ValueError(f"Database {database} not found")
 
+def apoc_version():
+
+    query = "RETURN apoc.version() as v"
+    return read_query(query)['v']
+
+def version():
+    query = "call dbms.components()"
+    return read_query(query)
 
 def close_driver():
     neohelper.driver.close()

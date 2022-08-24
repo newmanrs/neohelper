@@ -302,7 +302,7 @@ def database_clear(database):
 @click.option(
     '--indent', '-i',
     type=int,
-    default=None,
+    default=2,
     help=(
         "Set indentation of json printout"
         )
@@ -312,8 +312,26 @@ def index_show(*args, **kwargs):
     Print database indexes
     """
     results = neohelper.get_all_indexes()
+
+    indent = kwargs['indent']
+    if indent < 0:
+        indent = None
+
     if results:
         for r in results:
-            click.echo(json.dumps(r, indent=kwargs['indent']))
+            click.echo(json.dumps(r, indent=indent))
     else:
         click.echo("No indexes")
+
+@cli.command()
+def version():
+    """ Neo4j version and edition """
+    click.echo(json.dumps(neohelper.version(),indent=2))
+
+@cli.command()
+def apoc_version():
+    """ Display APOC library version """
+    click.echo(f"APOC version: {neohelper.apoc_version()}")
+
+
+
