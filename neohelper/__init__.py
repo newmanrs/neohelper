@@ -67,8 +67,9 @@ class NeoHelper():
             atexit.register(self.close_driver)
 
         if self.database is None:
-            self.print_command(
-                "No database selected, querying for default")
+            if self.verbose:
+                self.print_command(
+                    "No database selected, querying for default")
             self.database = 'system'
             query = "show default database yield name"
             self.set_database(self.read_query(query)['name'])
@@ -89,7 +90,7 @@ class NeoHelper():
                 "Executing read query to database= "
                 f"'{database}'"
                 )
-            self.print_command(f"{query}")
+            self.print_command(f"{query}\n")
 
 
         with self.get_driver().session(database=database) as session:
@@ -103,7 +104,7 @@ class NeoHelper():
 
         if self.verbose:
             self.print_command(f"Executing write query to database='{database}'")
-            self.print_command(f"{query}")
+            self.print_command(f"{query}\n")
 
         with self.get_driver().session(database=database) as session:
             s = session.write_transaction
