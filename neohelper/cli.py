@@ -1,6 +1,6 @@
 import json
 import click
-import neohelper
+from neohelper import nh
 
 
 @click.group()
@@ -18,8 +18,8 @@ import neohelper
 @click.option(
     '--uri',
     default="NEO4J_URI",
-    help="Environmental variable storing Neo4j"
-         "uri (i.e. neo4j://localhost:7687)",
+    help="Environmental variable storing Neo4j "
+         "URI (i.e. neo4j://localhost:7687)",
     show_default=True
     )
 @click.option(
@@ -28,13 +28,24 @@ import neohelper
     help="Name of the database to use for sessions and transactions.",
     show_default=True
     )
-def cli(user, pw, uri, db):
+@click.option(
+    '-v',
+    '--verbose',
+    default=False,
+    is_flag=True,
+    help="Display full DB query behind command",
+    show_default=True
+    )
+
+def cli(user, pw, uri, db, verbose):
     """
     Interface for monitoring and interacting with Neo4j databases.
-    Invoke `neohelper command --help` for details on each command.
+    Invoke `nh command --help` for details on each command.
     """
-    neohelper.set_database(db)
-    neohelper.init_neo4j_driver(user, pw, uri)
+    nh.set_database(db)
+    nh.set_verbose(verbose)
+    nh.print_command = click.echo
+    nh.init_neo4j_driver(user, pw, uri)
 
 
 @cli.command()
@@ -48,7 +59,7 @@ def count():
         RETURN {node_count : node_count, edge_count : edge_count} as counts
     """
 
-    result = neohelper.read_query(query)
+    result = nh.read_query(query)
     nc = result['counts']['node_count']
     ec = result['counts']['edge_count']
     click.echo(f"Database contains {nc} nodes and {ec} relationships")
@@ -75,7 +86,7 @@ def count_node_labels(*args, **kwargs):
     with label, count(n) as count order by count DESC
     return collect({label : label, count : count}) as label_counts
     """
-    record = neohelper.read_query(query)
+    record = nh.read_query(query)
     labels = kwargs['labels']
     results = record['label_counts']
 
@@ -120,7 +131,7 @@ def count_relationship_types(*args, **kwargs):
     CALL db.relationshipTypes() YIELD relationshipType as type
     return collect(type) as relationship_types
     """
-    record = neohelper.read_query(query)
+    record = nh.read_query(query)
 
     results = []
     # Can't parameterize over type in native cypher (need APOC) or
@@ -130,7 +141,7 @@ def count_relationship_types(*args, **kwargs):
         match ()-[t:{t}]->()
         return count(t) as count
         """
-        res = neohelper.read_query(query)
+        res = nh.read_query(query)
         results.append({'label': t, 'count': res['count']})
 
     results = sorted(results, key=lambda k: k['count'], reverse=True)
@@ -189,7 +200,7 @@ def query(*args, **kwargs):
     Example:
 
     \b
-    neohelper query \\
+    nh query \\
     "unwind  \\$jsons as json
     MERGE (p:Person {
         name : json.name,
@@ -228,9 +239,9 @@ def query(*args, **kwargs):
             raise AttributeError(msg)
 
     if write:
-        results = neohelper.write_query(query, jsons=dlist)
+        results = nh.write_query(query, jsons=dlist)
     else:
-        results = neohelper.read_query(query, jsons=dlist)
+        results = nh.read_query(query, jsons=dlist)
 
     if verbose:
         click.echo("Results:")
@@ -249,13 +260,13 @@ def detach_delete():
     query = """
     MATCH (n) DETACH DELETE (n)
     """
-    neohelper.write_query(query)
+    nh.write_query(query)
 
 
 @cli.command()
 def database_names():
     """ Display database names """
-    click.echo(neohelper.get_database_names())
+    click.echo(nh.get_database_names())
 
 
 @cli.command()
@@ -265,7 +276,7 @@ def database_names():
     )
 def database_create(database):
     """ Create new database with given name """
-    neohelper.create_database(database)
+    nh.create_database(database)
 
 
 @cli.command()
@@ -275,7 +286,7 @@ def database_create(database):
     )
 def database_drop(database):
     """ Drop database with given name"""
-    neohelper.drop_database(database)
+    nh.drop_database(database)
 
 
 @cli.command()
@@ -289,13 +300,13 @@ def database_clear(database):
 
     # If tuple empty, wipe default db
     if not database:
-        default = neohelper.database
+        default = nh.database
         click.echo(f"Wiping database {default}")
-        neohelper.clear_database(default)
+        nh.clear_database(default)
     else:
         for d in database:
             click.echo(f"Wiping database {d}")
-            neohelper.clear_database(d)
+            nh.clear_database(d)
 
 
 @cli.command()
@@ -311,7 +322,8 @@ def index_show(*args, **kwargs):
     """
     Print database indexes
     """
-    results = neohelper.get_all_indexes()
+
+    results = nh.get_all_indexes()
 
     indent = kwargs['indent']
     if indent < 0:
@@ -323,15 +335,14 @@ def index_show(*args, **kwargs):
     else:
         click.echo("No indexes")
 
+
 @cli.command()
 def version():
     """ Neo4j version and edition """
-    click.echo(json.dumps(neohelper.version(),indent=2))
+    click.echo(json.dumps(nh.version(), indent=2))
+
 
 @cli.command()
-def apoc_version():
+def version_APOC():
     """ Display APOC library version """
-    click.echo(f"APOC version: {neohelper.apoc_version()}")
-
-
-
+    click.echo(f"APOC version: {nh.apoc_version()}")
